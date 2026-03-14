@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beep Timer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0a;--panel:#111;--border:#222;
+  --accent:#e8ff00;--accent2:#ff3c00;
+  --text:#f0f0f0;--dim:#555;--glow:rgba(232,255,0,0.15);
+}
+body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:20px 0;}
+body::before{content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,
+  rgba(255,255,255,0.012) 2px,rgba(255,255,255,0.012) 4px);
+  pointer-events:none;z-index:10;}
+.wrapper{position:relative;width:min(500px,96vw)}
+.label-top{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:6px;
+  color:var(--dim);text-align:center;margin-bottom:8px}
+.main-panel{border:1px solid var(--border);background:var(--panel);
+  padding:36px 32px 28px;position:relative}
+.main-panel::before{content:'';position:absolute;top:-1px;left:20px;right:20px;
+  height:2px;background:var(--accent)}
+.corner-tag{position:absolute;top:-1px;right:-1px;width:0;height:0;border-style:solid;
+  border-width:0 18px 18px 0;border-color:transparent var(--accent) transparent transparent}
+.config-section{margin-bottom:24px;overflow:hidden;
+  transition:max-height .35s ease,opacity .3s ease,margin .35s ease;max-height:500px}
+.config-section.collapsed{max-height:0;opacity:0;margin-bottom:0}
+.config-tabs{display:grid;grid-template-columns:1fr 1fr;gap:1px;
+  background:var(--border);margin-bottom:16px}
+.tab-btn{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;
+  background:var(--panel);border:none;color:var(--dim);padding:10px;cursor:pointer;transition:all .15s}
+.tab-btn.active{background:rgba(232,255,0,0.06);color:var(--accent)}
+.config-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.config-field{display:flex;flex-direction:column;gap:5px}
+.config-field label{font-size:9px;letter-spacing:3px;color:var(--dim)}
+.config-field input{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;
+  background:var(--bg);border:1px solid var(--border);color:var(--text);
+  padding:8px 10px;width:100%;outline:none;transition:border-color .15s}
+.config-field input:focus{border-color:var(--accent)}
+.derived-display{grid-column:span 2;background:var(--bg);border:1px solid var(--border);
+  padding:10px 12px;font-size:10px;letter-spacing:2px;color:var(--dim);
+  display:flex;justify-content:space-between;align-items:center}
+.derived-display span{color:var(--accent);font-family:'Bebas Neue',sans-serif;
+  font-size:16px;letter-spacing:2px}
+.presets-section{margin-top:12px}
+.presets-label{font-size:9px;letter-spacing:3px;color:var(--dim);margin-bottom:8px}
+.presets-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:0}
+.preset-chip{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;
+  border:1px solid var(--border);background:var(--bg);color:var(--dim);
+  padding:5px 10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
+.preset-chip:hover{border-color:var(--accent);color:var(--accent)}
+.preset-chip .del{font-size:10px;color:var(--dim);line-height:1;padding:0 2px;opacity:.5}
+.preset-chip:hover .del{opacity:1;color:var(--accent2)}
+.preset-save-row{display:grid;grid-template-columns:1fr auto;gap:6px}
+.preset-name-input{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:1px;
+  background:var(--bg);border:1px solid var(--border);color:var(--text);
+  padding:6px 10px;outline:none;transition:border-color .15s}
+.preset-name-input:focus{border-color:var(--accent)}
+.preset-name-input::placeholder{color:var(--dim)}
+.btn-save-preset{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:2px;
+  border:1px solid var(--dim);background:transparent;color:var(--dim);
+  padding:6px 12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn-save-preset:hover{border-color:var(--accent);color:var(--accent)}
+.divider{border:none;border-top:1px solid var(--border);margin:0 0 24px}
+.timer-display{text-align:center;margin-bottom:24px}
+.time-remaining{font-family:'Bebas Neue',sans-serif;font-size:clamp(60px,15vw,96px);
+  letter-spacing:4px;line-height:1;color:var(--text);text-shadow:0 0 60px var(--glow);
+  transition:color .08s}
+.time-remaining.beep-flash{color:var(--accent);text-shadow:0 0 80px rgba(232,255,0,0.6)}
+.time-label{font-size:10px;letter-spacing:5px;color:var(--dim);margin-top:4px}
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;
+  background:var(--border);margin-bottom:20px}
+.stat{background:var(--panel);padding:12px 8px;text-align:center}
+.stat-value{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--accent);
+  letter-spacing:2px;line-height:1}
+.stat-label{font-size:9px;letter-spacing:3px;color:var(--dim);margin-top:3px}
+.progress-wrap{margin-bottom:20px;overflow:hidden;
+  transition:max-height .3s ease,opacity .3s ease,margin .3s ease;max-height:40px}
+.progress-wrap.hidden{max-height:0;opacity:0;margin-bottom:0}
+.progress-meta{display:flex;justify-content:space-between;
+  font-size:9px;letter-spacing:3px;color:var(--dim);margin-bottom:6px}
+.progress-track{height:3px;background:var(--border);overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);width:0%;
+  box-shadow:0 0 8px var(--accent);transition:width .1s linear}
+.ticks-wrap{margin-bottom:20px}
+.ticks-label{font-size:9px;letter-spacing:3px;color:var(--dim);margin-bottom:6px}
+.ticks-track{display:flex;gap:2px;flex-wrap:wrap}
+.tick{height:14px;background:var(--border);flex-shrink:0;transition:background .15s}
+.tick.done{background:var(--accent)}
+.tick.current{background:var(--accent2);animation:pulse .3s ease-in-out}
+@keyframes pulse{50%{transform:scaleY(1.5);opacity:.7}}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;
+  border:1px solid var(--border);background:transparent;color:var(--dim);
+  padding:13px;cursor:pointer;transition:all .15s}
+.btn:hover{border-color:var(--dim);color:var(--text)}
+.btn-primary{border-color:var(--accent);color:var(--accent);background:rgba(232,255,0,0.04)}
+.btn-primary:hover{background:rgba(232,255,0,0.12);box-shadow:0 0 20px rgba(232,255,0,0.15)}
+.btn-stop{border-color:var(--accent2);color:var(--accent2);background:rgba(255,60,0,0.04)}
+.btn-stop:hover{background:rgba(255,60,0,0.12);box-shadow:0 0 20px rgba(255,60,0,0.15)}
+.btn:disabled{opacity:.3;cursor:default;pointer-events:none}
+.btn-full{grid-column:span 2}
+.status-bar{display:flex;align-items:center;gap:8px;margin-top:16px;
+  font-size:9px;letter-spacing:3px;color:var(--dim)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--dim)}
+.status-dot.active{background:var(--accent);box-shadow:0 0 6px var(--accent);
+  animation:blink 1s step-end infinite}
+.status-dot.done{background:var(--accent2);box-shadow:0 0 6px var(--accent2)}
+@keyframes blink{50%{opacity:0}}
+.finished-banner{display:none;text-align:center;padding:14px;
+  background:rgba(255,60,0,0.08);border:1px solid var(--accent2);
+  margin-bottom:18px;font-family:'Bebas Neue',sans-serif;
+  font-size:20px;letter-spacing:6px;color:var(--accent2)}
+.finished-banner.visible{display:block}
+.motiv-wrap{height:28px;display:flex;align-items:center;
+  justify-content:center;margin-bottom:16px}
+.motiv-msg{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:5px;
+  color:var(--accent);text-shadow:0 0 20px rgba(232,255,0,0.4);
+  opacity:0;transition:opacity .4s ease}
+.motiv-msg.visible{opacity:1}
+.motiv-msg.fading{opacity:0}
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="label-top" id="labelTop">BEEP TIMER</div>
+  <div class="main-panel">
+    <div class="corner-tag"></div>
+    <div id="resetWrap" style="display:none;text-align:right;margin-bottom:16px">
+      <button class="btn btn-stop" onclick="resetTimer()" style="padding:6px 16px;font-size:14px;letter-spacing:3px">RESET</button>
+    </div>
+    <div class="config-section" id="configSection">
+      <div class="config-tabs">
+        <button class="tab-btn active" id="tabInterval" onclick="setMode('interval')">SET INTERVAL</button>
+        <button class="tab-btn" id="tabReps" onclick="setMode('reps')">SET REP COUNT</button>
+      </div>
+      <div class="config-fields">
+        <div class="config-field">
+          <label>DURATION (MIN)</label>
+          <input type="number" id="inputDuration" value="20" min="0.1" step="0.5" oninput="recalc()">
+        </div>
+        <div class="config-field" id="fieldInterval">
+          <label>INTERVAL (SEC)</label>
+          <input type="number" id="inputInterval" value="7" min="0.1" step="0.1" oninput="recalc()">
+        </div>
+        <div class="config-field" id="fieldReps" style="display:none">
+          <label>TARGET REPS</label>
+          <input type="number" id="inputReps" value="171" min="1" step="1" oninput="recalc()">
+        </div>
+        <div class="derived-display">
+          <span id="derivedLabel">TOTAL BEEPS</span>
+          <span id="derivedValue">171</span>
+        </div>
+      </div>
+      <div class="presets-section">
+        <div class="presets-label">PRESETS</div>
+        <div class="presets-list" id="presetsList"></div>
+        <div class="preset-save-row">
+          <input class="preset-name-input" id="presetNameInput" type="text" maxlength="24" placeholder="name this preset...">
+          <button class="btn-save-preset" onclick="savePreset()">SAVE</button>
+        </div>
+      </div>
+      <div class="controls" style="margin-top:16px">
+        <button class="btn btn-primary btn-full" id="startBtn" onclick="toggleTimer()">START</button>
+      </div>
+    </div>
+    <hr class="divider" id="configDivider">
+    <div class="finished-banner" id="finishedBanner">SESSION COMPLETE</div>
+    <div class="timer-display">
+      <div class="time-remaining" id="timeDisplay">20:00</div>
+      <div class="time-label">TIME REMAINING</div>
+    </div>
+    <div class="motiv-wrap">
+      <div class="motiv-msg" id="motivMsg"></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-value" id="beepCount">0</div>
+        <div class="stat-label">BEEPS</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="nextBeep">--</div>
+        <div class="stat-label">NEXT IN</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="totalBeepsDisplay">171</div>
+        <div class="stat-label">TOTAL</div>
+      </div>
+    </div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-meta">
+        <span>ELAPSED</span>
+        <span id="pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+    <div class="ticks-wrap">
+      <div class="ticks-label" id="ticksLabel">BEEP LOG</div>
+      <div class="ticks-track" id="ticksTrack"></div>
+    </div>
+    <div class="controls" id="runControls" style="display:none">
+      <button class="btn btn-primary btn-full" id="toggleBtn" onclick="toggleTimer()">PAUSE</button>
+    </div>
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">READY</span>
+    </div>
+  </div>
+</div>
+<script>
+var INNER_WIDTH = 436;
+var TARGET_MAX_ROWS = 4;
+var HIGH_COUNT_THRESHOLD = 60;
+var mode = 'interval';
+var audioCtx = null;
+var totalMs = 0, intervalMs = 0, totalBeeps = 0;
+var running = false, rafId = null;
+var startWallTime = 0, elapsedAtResume = 0, lastBeepIndex = -1;
+var inWarmup = false;
+var WARMUP_MS = 15000;
+var firedBeeps = new Set();
+var randomBeepSet = new Set();
+var motivClearOnNextBeep = false;
+var lastRandomMsg = '';
+var RANDOM_MSGS = ['STAY FOCUSED!','YOU GOT THIS!','BREATHE!','STRONG PACE!',
+  'KEEP IT UP!','PUSH THROUGH!','LOCK IN!','STEADY!',
+  'FEEL THE RHYTHM!','NICE WORK!','STAY WITH IT!','EYES FORWARD!'];
+
+// Audio
+function getCtx() {
+if (!audioCtx) {
+audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+return audioCtx;
+}
+
+function playTone(freq, startTime, duration, vol) {
+var ctx = getCtx();
+var osc = ctx.createOscillator();
+var gain = ctx.createGain();
+osc.connect(gain);
+gain.connect(ctx.destination);
+osc.type = ‘sine’;
+osc.frequency.setValueAtTime(freq, startTime);
+gain.gain.setValueAtTime(vol || 0.45, startTime);
+gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+osc.start(startTime);
+osc.stop(startTime + duration + 0.01);
+}
+
+function beep(type) {
+var ctx = getCtx();
+ctx.resume().then(function() {
+var t = ctx.currentTime;
+if (type === ‘final’) {
+playTone(880, t, 0.12, 0.5);
+playTone(1320, t + 0.12, 0.4, 0.5);
+} else if (type === ‘milestone’) {
+playTone(660, t, 0.18, 0.38);
+} else if (type === ‘countdown’) {
+playTone(900, t, 0.07, 0.35);
+playTone(950, t + 0.10, 0.07, 0.35);
+playTone(1000, t + 0.20, 0.07, 0.35);
+} else {
+playTone(1000, t, 0.12, 0.45);
+}
+});
+}
+
+function beepWarmup(pip) {
+var ctx = getCtx();
+ctx.resume().then(function() {
+var t = ctx.currentTime;
+var osc = ctx.createOscillator();
+var gain = ctx.createGain();
+osc.connect(gain);
+gain.connect(ctx.destination);
+osc.type = ‘sine’;
+if (pip === 4) {
+osc.frequency.setValueAtTime(1100, t);
+gain.gain.setValueAtTime(0.6, t);
+gain.gain.setValueAtTime(0.6, t + 0.7);
+gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+osc.start(t); osc.stop(t + 1.21);
+} else if (pip === 3) {
+osc.frequency.setValueAtTime(880, t);
+gain.gain.setValueAtTime(0.5, t);
+gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+osc.start(t); osc.stop(t + 0.46);
+} else {
+osc.frequency.setValueAtTime(660, t);
+gain.gain.setValueAtTime(0.35, t);
+gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+osc.start(t); osc.stop(t + 0.11);
+}
+});
+}
+
+// Wake lock
+var wakeLock = null;
+function acquireWakeLock() {
+if (‘wakeLock’ in navigator) {
+navigator.wakeLock.request(‘screen’).then(function(lock) {
+wakeLock = lock;
+wakeLock.addEventListener(‘release’, function() { wakeLock = null; });
+}).catch(function() {});
+}
+}
+function releaseWakeLock() {
+if (wakeLock) { wakeLock.release(); wakeLock = null; }
+}
+document.addEventListener(‘visibilitychange’, function() {
+if (document.visibilityState === ‘visible’ && running) acquireWakeLock();
+});
+
+// Mode / Config
+function setMode(m) {
+mode = m;
+document.getElementById(‘tabInterval’).classList.toggle(‘active’, m === ‘interval’);
+document.getElementById(‘tabReps’).classList.toggle(‘active’, m === ‘reps’);
+document.getElementById(‘fieldInterval’).style.display = m === ‘interval’ ? ‘’ : ‘none’;
+document.getElementById(‘fieldReps’).style.display = m === ‘reps’ ? ‘’ : ‘none’;
+recalc();
+}
+
+function getConfigValues() {
+var durMin = parseFloat(document.getElementById(‘inputDuration’).value) || 20;
+var durMs = durMin * 60 * 1000;
+var intMs, beeps;
+if (mode === ‘interval’) {
+intMs = (parseFloat(document.getElementById(‘inputInterval’).value) || 7) * 1000;
+beeps = Math.floor(durMs / intMs);
+} else {
+beeps = parseInt(document.getElementById(‘inputReps’).value) || 171;
+intMs = durMs / beeps;
+}
+return { durMin: durMin, durMs: durMs, intMs: intMs, beeps: beeps };
+}
+
+function tickWidth(beeps) {
+var perRow = Math.ceil(beeps / TARGET_MAX_ROWS);
+var w = Math.floor((INNER_WIDTH + 2) / perRow) - 2;
+return Math.max(2, Math.min(w, 12));
+}
+
+function recalc() {
+var cfg = getConfigValues();
+var intSec = cfg.intMs / 1000;
+if (mode === ‘interval’) {
+document.getElementById(‘derivedLabel’).textContent = ‘TOTAL BEEPS’;
+document.getElementById(‘derivedValue’).textContent = cfg.beeps;
+} else {
+document.getElementById(‘derivedLabel’).textContent = ‘INTERVAL’;
+document.getElementById(‘derivedValue’).textContent =
+intSec % 1 === 0 ? intSec.toFixed(0) + ‘s’ : intSec.toFixed(3).replace(/.?0+$/, ‘’) + ‘s’;
+}
+document.getElementById(‘totalBeepsDisplay’).textContent = cfg.beeps;
+document.getElementById(‘labelTop’).textContent =
+’BEEP TIMER / ’ + (intSec % 1 === 0 ? intSec.toFixed(0) : intSec.toFixed(2)) + ’s x ’ + cfg.durMin + ‘min’;
+document.getElementById(‘progressWrap’).classList.toggle(‘hidden’, cfg.beeps > HIGH_COUNT_THRESHOLD);
+rebuildTicks(cfg.beeps);
+if (!running) {
+document.getElementById(‘timeDisplay’).textContent = formatTime(cfg.durMs, cfg.intMs);
+}
+}
+
+function rebuildTicks(beeps) {
+var track = document.getElementById(‘ticksTrack’);
+track.innerHTML = ‘’;
+var w = tickWidth(beeps);
+document.getElementById(‘ticksLabel’).textContent = ‘BEEP LOG [’ + beeps + ’ intervals]’;
+for (var i = 0; i < beeps; i++) {
+var el = document.createElement(‘div’);
+el.className = ‘tick’;
+el.id = ‘tick-’ + i;
+el.style.width = w + ‘px’;
+track.appendChild(el);
+}
+}
+
+function formatTime(ms, intMsRef) {
+var totalSec = ms / 1000;
+var mins = Math.floor(totalSec / 60);
+var secs = totalSec % 60;
+if (intMsRef < 1000) {
+return pad2(mins) + ‘:’ + secs.toFixed(1).padStart(4, ‘0’);
+}
+return pad2(mins) + ‘:’ + pad2(Math.floor(secs));
+}
+
+function pad2(n) { return String(n).padStart(2, ‘0’); }
+
+function flashDisplay() {
+var el = document.getElementById(‘timeDisplay’);
+el.classList.add(‘beep-flash’);
+setTimeout(function() { el.classList.remove(‘beep-flash’); }, 250);
+}
+
+function updateTick(index) {
+var prev = document.getElementById(‘tick-’ + (index - 1));
+if (prev) { prev.classList.remove(‘current’); prev.classList.add(‘done’); }
+var cur = document.getElementById(‘tick-’ + index);
+if (cur) {
+cur.classList.add(‘current’);
+setTimeout(function() {
+if (cur) { cur.classList.remove(‘current’); cur.classList.add(‘done’); }
+}, 300);
+}
+}
+
+// Motivational
+function pickRandom() {
+var pool = RANDOM_MSGS.filter(function(m) { return m !== lastRandomMsg; });
+var msg = pool[Math.floor(Math.random() * pool.length)];
+lastRandomMsg = msg;
+return msg;
+}
+
+function buildScheduledSet() {
+var scheduled = new Set();
+var tolerance = (intervalMs / totalMs) * 0.6;
+for (var i = 0; i < totalBeeps; i++) {
+var elapsed = (i + 1) * intervalMs;
+var pct = elapsed / totalMs;
+var remSec = (totalMs - elapsed) / 1000;
+if (i === 0) { scheduled.add(i); continue; }
+if (i === 9 && totalBeeps > 10) { scheduled.add(i); continue; }
+if (i === 99 && totalBeeps > 100) { scheduled.add(i); continue; }
+if (Math.abs(pct - 0.25) < tolerance) { scheduled.add(i); continue; }
+if (Math.abs(pct - 0.5) < tolerance) { scheduled.add(i); continue; }
+if (Math.abs(pct - 0.75) < tolerance) { scheduled.add(i); continue; }
+if (remSec <= 5*60 + intervalMs/1000 && remSec > 5*60 - intervalMs/1000 && totalMs > 6*60*1000) { scheduled.add(i); continue; }
+if (remSec <= 60 + intervalMs/1000 && remSec > 60 - intervalMs/1000 && totalMs > 90*1000) { scheduled.add(i); continue; }
+if (totalBeeps - i === 10) { scheduled.add(i); continue; }
+if (totalBeeps - i === 3) { scheduled.add(i); continue; }
+}
+return scheduled;
+}
+
+function scheduleRandoms() {
+var MIN_GAP = 8, SPACING = 6;
+var scheduled = buildScheduledSet();
+var blocked = new Set();
+scheduled.forEach(function(i) { blocked.add(i-1); blocked.add(i); blocked.add(i+1); });
+var randoms = [];
+var gapStart = 0;
+var milestones = Array.from(scheduled).sort(function(a,b){return a-b;});
+milestones.push(totalBeeps);
+milestones.forEach(function(ms) {
+var gapSize = ms - gapStart;
+if (gapSize >= MIN_GAP) {
+var slots = Math.floor(gapSize / SPACING);
+var count = Math.max(0, slots - 1);
+for (var s = 1; s <= count; s++) {
+var pos = Math.round(gapStart + (gapSize * s) / (count + 1));
+if (!blocked.has(pos) && pos > 0 && pos < totalBeeps - 1) {
+randoms.push(pos);
+blocked.add(pos);
+}
+}
+}
+gapStart = ms + 1;
+});
+return new Set(randoms);
+}
+
+function getMilestoneMessage(elapsed, remaining, idx) {
+var pct = elapsed / totalMs;
+var remSec = remaining / 1000;
+var tolerance = (intervalMs / totalMs) * 0.6;
+if (idx === 0) return null;
+if (idx === 9 && totalBeeps > 10) return ‘10 DONE!’;
+if (idx === 99 && totalBeeps > 100) return ‘100 DONE!’;
+if (Math.abs(pct - 0.25) < tolerance) return ‘IN THE ZONE!’;
+if (Math.abs(pct - 0.5) < tolerance) return ‘HALF WAY!’;
+if (Math.abs(pct - 0.75) < tolerance) return ‘KEEP GOING!’;
+if (remSec <= 5*60 + intervalMs/1000 && remSec > 5*60 - intervalMs/1000 && totalMs > 6*60*1000) return ‘FIVE MINUTES TO GO’;
+if (remSec <= 60 + intervalMs/1000 && remSec > 60 - intervalMs/1000 && totalMs > 90*1000) return ‘ONE MINUTE TO GO!’;
+if (totalBeeps - idx === 10) return ‘LAST TEN!’;
+if (totalBeeps - idx === 3) return ‘NEARLY THERE!’;
+if (randomBeepSet.has(idx)) return pickRandom();
+return null;
+}
+
+function showMotiv(text) {
+var el = document.getElementById(‘motivMsg’);
+el.textContent = text;
+el.classList.remove(‘fading’);
+el.classList.add(‘visible’);
+motivClearOnNextBeep = false;
+}
+
+function clearMotivOnBeep() {
+var el = document.getElementById(‘motivMsg’);
+if (motivClearOnNextBeep) {
+el.classList.add(‘fading’);
+setTimeout(function() { el.classList.remove(‘visible’,‘fading’); el.textContent=’’; }, 400);
+motivClearOnNextBeep = false;
+} else if (el.classList.contains(‘visible’)) {
+motivClearOnNextBeep = true;
+}
+}
+
+function resetMotiv() {
+motivClearOnNextBeep = false;
+lastRandomMsg = ‘’;
+randomBeepSet = new Set();
+var el = document.getElementById(‘motivMsg’);
+el.classList.remove(‘visible’,‘fading’);
+el.textContent = ‘’;
+}
+
+// Warmup
+warmupLoop.pip1 = false;
+warmupLoop.pip2 = false;
+warmupLoop.pip3 = false;
+function warmupLoop() {
+if (!running) return;
+var now = Date.now();
+var warmupElapsed = now - startWallTime;
+var warmupRemaining = Math.max(0, WARMUP_MS - warmupElapsed);
+var remSec = Math.ceil(warmupRemaining / 1000);
+document.getElementById(‘timeDisplay’).textContent = ‘00:’ + pad2(remSec);
+if (!warmupLoop.pip1 && warmupElapsed >= WARMUP_MS - 3000) { beepWarmup(1); warmupLoop.pip1 = true; }
+if (!warmupLoop.pip2 && warmupElapsed >= WARMUP_MS - 2000) { beepWarmup(2); warmupLoop.pip2 = true; }
+if (!warmupLoop.pip3 && warmupElapsed >= WARMUP_MS - 1000) { beepWarmup(3); warmupLoop.pip3 = true; }
+if (warmupElapsed >= WARMUP_MS) {
+inWarmup = false;
+warmupLoop.pip1 = warmupLoop.pip2 = warmupLoop.pip3 = false;
+beepWarmup(4);
+showMotiv(“LET’S GO!”);
+document.getElementById(‘statusText’).textContent = ‘RUNNING’;
+startWallTime = Date.now();
+elapsedAtResume = 0;
+rafId = requestAnimationFrame(loop);
+return;
+}
+rafId = requestAnimationFrame(warmupLoop);
+}
+
+// Main loop
+function loop() {
+if (!running) return;
+var now = Date.now();
+var elapsed = elapsedAtResume + (now - startWallTime);
+var remaining = Math.max(0, totalMs - elapsed);
+var beepsDue = Math.min(Math.floor(elapsed / intervalMs), totalBeeps);
+for (var i = lastBeepIndex + 1; i < beepsDue; i++) {
+if (firedBeeps.has(i)) { lastBeepIndex = i; continue; }
+firedBeeps.add(i);
+var isFinal = (i === totalBeeps - 1);
+var isCountdown = !isFinal && (totalBeeps - i <= 3);
+var msg = getMilestoneMessage(elapsed, remaining, i);
+var isMotiv = !isFinal && !isCountdown && !!msg;
+var beepType = isFinal ? ‘final’ : isCountdown ? ‘countdown’ : isMotiv ? ‘milestone’ : ‘normal’;
+beep(beepType);
+flashDisplay();
+updateTick(i);
+document.getElementById(‘beepCount’).textContent = i + 1;
+lastBeepIndex = i;
+clearMotivOnBeep();
+if (msg) showMotiv(msg);
+}
+document.getElementById(‘timeDisplay’).textContent = formatTime(remaining, intervalMs);
+var pct = Math.min(100, Math.round((elapsed / totalMs) * 100));
+document.getElementById(‘progressFill’).style.width = pct + ‘%’;
+document.getElementById(‘pct’).textContent = pct + ‘%’;
+var timeToNext = intervalMs - (elapsed % intervalMs);
+document.getElementById(‘nextBeep’).textContent =
+timeToNext < 1000 ? (timeToNext / 1000).toFixed(1) + ‘s’ : Math.ceil(timeToNext / 1000) + ‘s’;
+if (elapsed >= totalMs) { finishTimer(); return; }
+rafId = requestAnimationFrame(loop);
+}
+
+// Controls
+function setToggleBtn(label, disabled) {
+var btn = document.getElementById(‘toggleBtn’);
+btn.textContent = label;
+btn.disabled = !!disabled;
+}
+
+function showRunControls() {
+document.getElementById(‘runControls’).style.display = ‘’;
+document.getElementById(‘startBtn’).style.display = ‘none’;
+}
+
+function showStartBtn() {
+document.getElementById(‘runControls’).style.display = ‘none’;
+document.getElementById(‘startBtn’).style.display = ‘’;
+document.getElementById(‘startBtn’).disabled = false;
+}
+
+function toggleTimer() {
+var ctx = getCtx();
+ctx.resume().then(function() {
+if (!running && elapsedAtResume === 0 && lastBeepIndex === -1) {
+var cfg = getConfigValues();
+totalMs = cfg.durMs; intervalMs = cfg.intMs; totalBeeps = cfg.beeps;
+randomBeepSet = scheduleRandoms();
+document.getElementById(‘configSection’).classList.add(‘collapsed’);
+document.getElementById(‘configDivider’).style.display = ‘none’;
+document.getElementById(‘resetWrap’).style.display = ‘’;
+document.getElementById(‘statusDot’).className = ‘status-dot active’;
+document.getElementById(‘statusText’).textContent = ‘GET READY’;
+document.getElementById(‘nextBeep’).textContent = ‘–’;
+showRunControls();
+setToggleBtn(‘PAUSE’);
+showMotiv(‘GET READY…’);
+beep(‘normal’);
+acquireWakeLock();
+inWarmup = true;
+warmupLoop.pip1 = warmupLoop.pip2 = warmupLoop.pip3 = false;
+running = true;
+startWallTime = Date.now();
+rafId = requestAnimationFrame(warmupLoop);
+} else if (running) {
+running = false;
+cancelAnimationFrame(rafId);
+elapsedAtResume += inWarmup ? 0 : Date.now() - startWallTime;
+if (inWarmup) elapsedAtResume = 0;
+document.getElementById(‘statusDot’).className = ‘status-dot’;
+document.getElementById(‘statusText’).textContent = ‘PAUSED’;
+document.getElementById(‘nextBeep’).textContent = ‘–’;
+setToggleBtn(‘RESUME’);
+} else {
+document.getElementById(‘statusDot’).className = ‘status-dot active’;
+document.getElementById(‘statusText’).textContent = inWarmup ? ‘GET READY’ : ‘RUNNING’;
+setToggleBtn(‘PAUSE’);
+running = true;
+startWallTime = Date.now();
+rafId = requestAnimationFrame(inWarmup ? warmupLoop : loop);
+}
+});
+}
+
+function resetTimer() {
+running = false;
+cancelAnimationFrame(rafId);
+elapsedAtResume = 0;
+lastBeepIndex = -1;
+inWarmup = false;
+firedBeeps.clear();
+warmupLoop.pip1 = warmupLoop.pip2 = warmupLoop.pip3 = false;
+document.getElementById(‘configSection’).classList.remove(‘collapsed’);
+document.getElementById(‘configDivider’).style.display = ‘’;
+document.getElementById(‘resetWrap’).style.display = ‘none’;
+showStartBtn();
+document.getElementById(‘statusDot’).className = ‘status-dot’;
+document.getElementById(‘statusText’).textContent = ‘READY’;
+document.getElementById(‘finishedBanner’).classList.remove(‘visible’);
+document.getElementById(‘beepCount’).textContent = ‘0’;
+document.getElementById(‘nextBeep’).textContent = ‘–’;
+document.getElementById(‘progressFill’).style.width = ‘0%’;
+document.getElementById(‘pct’).textContent = ‘0%’;
+document.querySelectorAll(’.tick’).forEach(function(t) {
+t.classList.remove(‘done’,‘current’);
+});
+resetMotiv();
+releaseWakeLock();
+recalc();
+}
+
+function finishTimer() {
+running = false;
+cancelAnimationFrame(rafId);
+document.getElementById(‘timeDisplay’).textContent = intervalMs < 1000 ? ‘00:00.0’ : ‘00:00’;
+setToggleBtn(‘DONE’, true);
+document.getElementById(‘statusDot’).className = ‘status-dot done’;
+document.getElementById(‘statusText’).textContent = ‘COMPLETE’;
+document.getElementById(‘nextBeep’).textContent = ‘–’;
+document.getElementById(‘finishedBanner’).classList.add(‘visible’);
+document.getElementById(‘progressFill’).style.width = ‘100%’;
+document.getElementById(‘pct’).textContent = ‘100%’;
+document.querySelectorAll(’.tick’).forEach(function(t) {
+t.classList.remove(‘current’); t.classList.add(‘done’);
+});
+releaseWakeLock();
+}
+
+// Presets
+var PRESETS_KEY = ‘intervalTimerPresets’;
+function loadPresets() {
+try { return JSON.parse(localStorage.getItem(PRESETS_KEY)) || []; } catch(e) { return []; }
+}
+function savePresetsToStorage(p) { localStorage.setItem(PRESETS_KEY, JSON.stringify(p)); }
+function renderPresets() {
+var list = document.getElementById(‘presetsList’);
+var presets = loadPresets();
+list.innerHTML = ‘’;
+list.style.display = presets.length ? ‘flex’ : ‘none’;
+presets.forEach(function(p, idx) {
+var chip = document.createElement(‘div’);
+chip.className = ‘preset-chip’;
+chip.innerHTML = ‘<span>’ + p.name + ‘</span><span class="del" title="Delete">x</span>’;
+chip.querySelector(‘span:first-child’).onclick = function() { applyPreset(p); };
+chip.querySelector(’.del’).onclick = function(e) { e.stopPropagation(); deletePreset(idx); };
+list.appendChild(chip);
+});
+}
+function savePreset() {
+var nameInput = document.getElementById(‘presetNameInput’);
+var name = nameInput.value.trim();
+if (!name) { nameInput.focus(); return; }
+var preset = { name: name, mode: mode,
+duration: parseFloat(document.getElementById(‘inputDuration’).value),
+interval: parseFloat(document.getElementById(‘inputInterval’).value),
+reps: parseInt(document.getElementById(‘inputReps’).value) };
+var presets = loadPresets();
+var existing = presets.findIndex(function(p) { return p.name.toLowerCase() === name.toLowerCase(); });
+if (existing >= 0) presets[existing] = preset; else presets.push(preset);
+savePresetsToStorage(presets);
+nameInput.value = ‘’;
+renderPresets();
+}
+function applyPreset(p) {
+document.getElementById(‘inputDuration’).value = p.duration;
+document.getElementById(‘inputInterval’).value = p.interval;
+document.getElementById(‘inputReps’).value = p.reps;
+setMode(p.mode);
+}
+function deletePreset(idx) {
+var presets = loadPresets();
+presets.splice(idx, 1);
+savePresetsToStorage(presets);
+renderPresets();
+}
+document.getElementById(‘presetNameInput’).addEventListener(‘keydown’, function(e) {
+if (e.key === ‘Enter’) savePreset();
+});
+
+recalc();
+renderPresets();
+</script>
+
+</body>
+</html>
