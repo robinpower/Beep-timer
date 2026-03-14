@@ -129,6 +129,10 @@ body::before{content:'';position:fixed;inset:0;
 </style>
 </head>
 <body>
+<div id="errBox" style="display:none;position:fixed;top:0;left:0;right:0;
+background:#ff3c00;color:#fff;font-size:11px;padding:8px;z-index:9999;
+word-break:break-all;white-space:pre-wrap"></div>
+
 <div class="wrapper">
   <div class="label-top" id="labelTop">BEEP TIMER</div>
   <div class="main-panel">
@@ -217,10 +221,23 @@ body::before{content:'';position:fixed;inset:0;
   </div>
 </div>
 <script>
+
+window.onerror = function(msg, src, line, col, err) {
+var box = document.getElementById(‘errBox’);
+box.style.display = ‘block’;
+box.textContent = ’ERR line ’ + line + ’: ’ + msg + (err ? ‘\n’ + err.stack : ‘’);
+return false;
+};
+window.addEventListener(‘unhandledrejection’, function(e) {
+var box = document.getElementById(‘errBox’);
+box.style.display = ‘block’;
+box.textContent = (box.textContent || ‘’) + ’\nPROMISE: ’ + e.reason;
+});
+
 var INNER_WIDTH = 436;
 var TARGET_MAX_ROWS = 4;
 var HIGH_COUNT_THRESHOLD = 60;
-var mode = 'interval';
+var mode = ‘interval’;
 var audioCtx = null;
 var totalMs = 0, intervalMs = 0, totalBeeps = 0;
 var running = false, rafId = null;
@@ -230,10 +247,10 @@ var WARMUP_MS = 15000;
 var firedBeeps = new Set();
 var randomBeepSet = new Set();
 var motivClearOnNextBeep = false;
-var lastRandomMsg = '';
-var RANDOM_MSGS = ['STAY FOCUSED!','YOU GOT THIS!','BREATHE!','STRONG PACE!',
-  'KEEP IT UP!','PUSH THROUGH!','LOCK IN!','STEADY!',
-  'FEEL THE RHYTHM!','NICE WORK!','STAY WITH IT!','EYES FORWARD!'];
+var lastRandomMsg = ‘’;
+var RANDOM_MSGS = [‘STAY FOCUSED!’,‘YOU GOT THIS!’,‘BREATHE!’,‘STRONG PACE!’,
+‘KEEP IT UP!’,‘PUSH THROUGH!’,‘LOCK IN!’,‘STEADY!’,
+‘FEEL THE RHYTHM!’,‘NICE WORK!’,‘STAY WITH IT!’,‘EYES FORWARD!’];
 
 // Audio
 function getCtx() {
