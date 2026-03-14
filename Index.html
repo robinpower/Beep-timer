@@ -275,8 +275,8 @@ osc.stop(startTime + duration + 0.01);
 }
 
 function beep(type) {
+try {
 var ctx = getCtx();
-ctx.resume().then(function() {
 var t = ctx.currentTime;
 if (type === ‘final’) {
 playTone(880, t, 0.12, 0.5);
@@ -290,12 +290,12 @@ playTone(1000, t + 0.20, 0.07, 0.35);
 } else {
 playTone(1000, t, 0.12, 0.45);
 }
-});
+} catch(e) {}
 }
 
 function beepWarmup(pip) {
+try {
 var ctx = getCtx();
-ctx.resume().then(function() {
 var t = ctx.currentTime;
 var osc = ctx.createOscillator();
 var gain = ctx.createGain();
@@ -319,7 +319,7 @@ gain.gain.setValueAtTime(0.35, t);
 gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
 osc.start(t); osc.stop(t + 0.11);
 }
-});
+} catch(e) {}
 }
 
 // Wake lock
@@ -619,8 +619,9 @@ document.getElementById(‘startBtn’).disabled = false;
 }
 
 function toggleTimer() {
-var ctx = getCtx();
-ctx.resume().then(function() {
+// Resume audio context in background - don’t let it block timer logic
+if (audioCtx) { audioCtx.resume().catch(function(){}); }
+
 if (!running && elapsedAtResume === 0 && lastBeepIndex === -1) {
 var cfg = getConfigValues();
 totalMs = cfg.durMs; intervalMs = cfg.intMs; totalBeeps = cfg.beeps;
@@ -658,7 +659,6 @@ running = true;
 startWallTime = Date.now();
 rafId = requestAnimationFrame(inWarmup ? warmupLoop : loop);
 }
-});
 }
 
 function resetTimer() {
