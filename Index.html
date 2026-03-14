@@ -520,10 +520,12 @@ el.textContent = ‘’;
 }
 
 // Warmup
+function warmupLoop() {
+if (warmupLoop.pip1 === undefined) {
 warmupLoop.pip1 = false;
 warmupLoop.pip2 = false;
 warmupLoop.pip3 = false;
-function warmupLoop() {
+}
 if (!running) return;
 var now = Date.now();
 var warmupElapsed = now - startWallTime;
