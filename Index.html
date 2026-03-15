@@ -129,6 +129,7 @@ body::before{content:'';position:fixed;inset:0;
 </style>
 </head>
 <body>
+<div id="dbg" style="position:fixed;bottom:0;left:0;right:0;background:#000;color:#0f0;font-size:10px;padding:4px;z-index:9999;max-height:120px;overflow-y:auto;word-break:break-all"></div>
 <div id="errBox" style="display:none;position:fixed;top:0;left:0;right:0;
 background:#ff3c00;color:#fff;font-size:11px;padding:8px;z-index:9999;
 word-break:break-all;white-space:pre-wrap"></div>
@@ -221,6 +222,10 @@ word-break:break-all;white-space:pre-wrap"></div>
   </div>
 </div>
 <script>
+function log(msg) {
+  var d = document.getElementById('dbg');
+  if (d) { d.textContent = msg + '\n' + d.textContent; }
+}
 
 window.onerror = function(msg, src, line, col, err) {
 var box = document.getElementById(‘errBox’);
@@ -538,6 +543,7 @@ el.textContent = ‘’;
 
 // Warmup
 function warmupLoop() {
+log(“warmupLoop tick. running=”+running);
 if (warmupLoop.pip1 === undefined) {
 warmupLoop.pip1 = false;
 warmupLoop.pip2 = false;
@@ -619,10 +625,12 @@ document.getElementById(‘startBtn’).disabled = false;
 }
 
 function toggleTimer() {
+log(“toggleTimer called. running=”+running+” elapsed=”+elapsedAtResume+” lastBeep=”+lastBeepIndex);
 // Resume audio context in background - don’t let it block timer logic
 if (audioCtx) { audioCtx.resume().catch(function(){}); }
 
 if (!running && elapsedAtResume === 0 && lastBeepIndex === -1) {
+log(‘FRESH START branch’);
 var cfg = getConfigValues();
 totalMs = cfg.durMs; intervalMs = cfg.intMs; totalBeeps = cfg.beeps;
 randomBeepSet = scheduleRandoms();
@@ -641,6 +649,7 @@ inWarmup = true;
 warmupLoop.pip1 = warmupLoop.pip2 = warmupLoop.pip3 = false;
 running = true;
 startWallTime = Date.now();
+log(‘rAF warmupLoop started. rafId=’+rafId);
 rafId = requestAnimationFrame(warmupLoop);
 } else if (running) {
 running = false;
